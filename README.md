@@ -1,5 +1,8 @@
 # inter-claude-channels
 
+[![CI](https://github.com/biswajitpatra/inter-claude-channels/actions/workflows/ci.yml/badge.svg)](https://github.com/biswajitpatra/inter-claude-channels/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A peer-to-peer [channel](https://code.claude.com/docs/en/channels) that lets
 Claude Code sessions talk to each other. Start two sessions, and one can message
 the other — the message is **pushed straight into the recipient's running
