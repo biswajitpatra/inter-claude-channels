@@ -11,7 +11,8 @@
     "demo": "bun scripts/demo.ts",
     "db:generate": "drizzle-kit generate",
     "doctor": "bash scripts/doctor.sh",
-    "setup": "bash scripts/install.sh"
+    "setup": "bash scripts/install.sh",
+    "uninstall": "bash scripts/uninstall.sh"
   },
   "keywords": [
     "claude",

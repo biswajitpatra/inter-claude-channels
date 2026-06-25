@@ -66,6 +66,16 @@ bash scripts/install.sh
 This installs deps and registers `inter-claude` as a user-level MCP server so
 it's reachable from any directory.
 
+## Uninstall
+
+```bash
+bash scripts/uninstall.sh        # add --yes to skip the prompt
+```
+
+Removes the MCP registration, the SQLite bus (db + WAL/SHM, wake files, lock),
+and the install backup. Restart any running sessions to fully drop the channel.
+The cloned repo is left in place (delete it manually if you want).
+
 ## Use
 
 Channels are opt-in per session. In one terminal:
