@@ -10,5 +10,5 @@ command -v bun >/dev/null || { echo "error: bun is required — https://bun.sh";
 echo "==> installing dependencies"
 (cd "$REPO" && bun install --silent)
 
-echo "==> enabling the claude-mcp module"
-(cd "$REPO" && bun cli.ts enable claude-mcp)
+echo "==> enabling the claude module (channel mode)"
+(cd "$REPO" && bun cli.ts enable claude)

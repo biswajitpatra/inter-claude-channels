@@ -28,7 +28,7 @@ const text = (r: any) => r.content?.[0]?.text ?? JSON.stringify(r)
 function session(name: string, home: string) {
   const transport = new StdioClientTransport({
     command: 'bun',
-    args: ['adapters/claude-mcp/server.ts'],
+    args: ['adapters/claude/server.ts'],
     env: { ...process.env, AGENTBUS_NAME: name, AGENTBUS_HOME: home },
   })
   return { client: new Client({ name: `demo-${name}`, version: '0' }), transport }

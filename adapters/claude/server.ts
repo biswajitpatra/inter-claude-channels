@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * claude-mcp — the Claude Code adapter for agentbus.
+ * claude / channel mode — the push delivery for Claude Code (agentbus).
  *
  * Launches as a channel (an MCP server that pushes events into the session) and
  * wires the runtime-agnostic core to two ports:

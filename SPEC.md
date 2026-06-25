@@ -32,6 +32,17 @@ The **core** owns all shared state and is the single source of truth. It knows
 nothing about MCP, channels, HTTP, or how a recipient is woken. A **module**
 adapts the core to one runtime by providing two driven ports.
 
+A module may expose several **modes** — alternative (Trigger, Delivery) pairings
+for the same runtime. Modes are **not** mutually exclusive: enable any subset and
+they cooperate through the bus — whichever mechanism drains a pending row first
+delivers it (its `deliveredAt` write), and the others find it gone. Modules are
+independent of each other too, so a Claude module and a future Gemini module can
+be enabled together and message each other over the one shared bus.
+
+The Claude Code module ships `channel` (file-watch + MCP channel — real-time) and
+`hook` (hook lifecycle + `additionalContext` — turn-boundary, and works for
+sessions that can't load channels, e.g. ones dispatched from the agents panel).
+
 ## 2. Envelope
 
 The unit of exchange. Field names mirror A2A's message shape (a sender, a
@@ -68,7 +79,9 @@ interface Trigger {
   Trigger with a slow safety poll.**
 
 Reference implementations: `file-watch` (per-peer wake file + `fs.watch`),
-`poll` (fixed interval).
+`poll` (fixed interval), and the host runtime's **hook lifecycle** (the claude
+`hook` mode arms on `SessionStart`/`Stop` — the runtime triggers the drain
+instead of a file watch, so there is no long-running process).
 
 ## 4. Port: Delivery (PUSH)
 
@@ -85,7 +98,9 @@ interface Delivery {
   by the agent**. Channels (and most push transports) provide no application
   ack, so "delivered" is a transport fact, not a read receipt.
 
-Reference implementation: `mcp-channel` (an MCP `notifications/claude/channel`).
+Reference implementations: `mcp-channel` (an MCP `notifications/claude/channel`
+— push, mid-turn) and `hook-additionalContext` (a Claude Code hook prints
+`hookSpecificOutput.additionalContext` — pull, at the turn boundary).
 
 ## 5. Delivery semantics
 
@@ -109,23 +124,41 @@ live peers; a rename moves pending rows to the new name atomically.
 
 ## 7. Module manifest (`adapters/<id>/module.json`)
 
+A module declares one or more **modes**; each mode is a (Trigger, Delivery)
+pairing plus how to register it with the runtime.
+
 ```json
 {
-  "id": "claude-mcp",
-  "title": "Claude Code (MCP channel)",
+  "id": "claude",
+  "title": "Claude Code",
   "runtime": "claude-code",
-  "delivery": "mcp-channel",
-  "trigger": "file-watch",
-  "entry": "adapters/claude-mcp/server.ts",
-  "register": { "kind": "claude-mcp-server", "name": "agentbus" },
-  "launch": "AGENTBUS_NAME=<name> claude --dangerously-load-development-channels server:agentbus"
+  "defaultMode": "channel",
+  "modes": {
+    "channel": {
+      "title": "channel — push, real-time",
+      "delivery": "mcp-channel",
+      "trigger": "file-watch",
+      "entry": "adapters/claude/server.ts",
+      "register": { "kind": "claude-mcp-server", "name": "agentbus" },
+      "launch": "AGENTBUS_NAME=<name> claude --dangerously-load-development-channels server:agentbus"
+    },
+    "hook": {
+      "title": "hook — pull, turn-boundary",
+      "delivery": "hook-additionalContext",
+      "trigger": "claude-hook-lifecycle",
+      "entry": "adapters/claude/drain.ts",
+      "register": { "kind": "claude-hook", "events": ["SessionStart", "Stop"] },
+      "launch": "AGENTBUS_NAME=<name> claude"
+    }
+  }
 }
 ```
 
-The module manager (`agentbus enable|disable|list`) reads these to wire a module
-into its runtime. `register.kind` tells the manager how to install it
-(`claude-mcp-server` registers an MCP server in `~/.claude.json`); new kinds are
-added as new runtimes are supported.
+`agentbus enable <id> [mode]` turns on a mode (omit = `defaultMode`, `all` =
+every mode); enabling one does not disable the others. `register.kind` tells the
+manager how to install that mode: `claude-mcp-server` writes an MCP server to
+`~/.claude.json`; `claude-hook` writes hooks to `~/.claude/settings.json`. New
+kinds are added as new runtimes/transports are supported.
 
 ## 8. Conformance
 
@@ -134,7 +167,7 @@ A conformant module:
 1. Reads/writes only through the core API (no direct schema coupling).
 2. Implements `Trigger` and `Delivery` per §3–4.
 3. Marks an envelope delivered only after a successful push (§5).
-4. Ships a `module.json` (§7).
+4. Ships a `module.json` with at least one mode (§7).
 
 ## 9. Relationship to other protocols
 

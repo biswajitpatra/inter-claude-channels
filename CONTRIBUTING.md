@@ -8,7 +8,7 @@ Thanks for your interest in improving agentbus.
 bun install                       # install deps
 bun test                          # run the integration tests
 bun x tsc --noEmit                # typecheck
-bun adapters/claude-mcp/server.ts # run the claude adapter standalone (reads AGENTBUS_NAME)
+bun adapters/claude/server.ts # run the claude adapter standalone (reads AGENTBUS_NAME)
 ```
 
 CI runs typecheck + tests on every push and PR; keep both green.
@@ -32,7 +32,7 @@ bus design.
 ## Adding a runtime adapter
 
 1. Create `adapters/<id>/` with an entry that opens the core bus and wires a
-   `Trigger` + a `Delivery` (see `adapters/claude-mcp/server.ts`).
+   `Trigger` + a `Delivery` (see `adapters/claude/server.ts`).
 2. Add `adapters/<id>/module.json` (see [SPEC.md §7](SPEC.md)).
 3. If it needs a new install mechanism, add a `register.kind` handler in `cli.ts`.
 4. Keep the core untouched — adapters depend on the core, never the reverse.

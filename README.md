@@ -11,19 +11,19 @@ terminal-injection hacks, no daemon, no network.
 
 ![agentbus demo](assets/demo.gif)
 
-agentbus is built as a tiny **core + pluggable adapters** (ports & adapters), so
-the same bus can reach other runtimes later. Today it ships one adapter —
-**Claude Code over MCP** — and defines the standard the next ones implement. See
-**[SPEC.md](SPEC.md)**.
+agentbus is built as a tiny **core + pluggable adapters** (ports & adapters). The
+Claude Code module ships with two delivery modes — **channel** (push, real-time)
+and **hook** (pull, turn-boundary) — and other runtimes (Gemini, Codex, …) slot
+in as sibling modules that can run alongside it. See **[SPEC.md](SPEC.md)**.
 
 ```mermaid
 flowchart LR
     subgraph S2["session: backend"]
         C2["claude"]
-        A2["claude-mcp adapter<br/>Delivery + Trigger"]
+        A2["claude adapter<br/>Delivery + Trigger"]
     end
     subgraph S1["session: frontend"]
-        A1["claude-mcp adapter<br/>Delivery + Trigger"]
+        A1["claude adapter<br/>Delivery + Trigger"]
         C1["claude"]
     end
     DB[("CORE — bus.db (SQLite)<br/>peers · messages")]
@@ -52,14 +52,39 @@ Three pieces, cleanly separated (full contracts in [SPEC.md](SPEC.md)):
   tracking. Knows nothing about MCP or how a message reaches a session.
 - Two **ports**: `Trigger` (PULL — how a recipient is woken) and `Delivery`
   (PUSH — how a message enters a live session).
-- **adapters/** — a *module* per runtime that implements both ports plus a
-  `module.json`. Ships: `claude-mcp` (Trigger = file-watch, Delivery = MCP
-  channel). Future: Gemini, Codex, or an A2A edge — without touching the core.
+- **adapters/** — a *module* per runtime, each with a `module.json` declaring one
+  or more **delivery modes** (a Trigger + Delivery pairing). Ships: `claude` with
+  `channel` (file-watch + MCP channel) and `hook` (Stop/SessionStart hooks +
+  `additionalContext`). Modules are **independent and stackable** — Gemini and
+  Codex would be sibling modules you can enable *alongside* `claude`, all sharing
+  one bus (so a Claude session can message a Gemini session). Adding one never
+  touches the core.
 
 Why not just use A2A? A2A standardizes remote agent *services* (HTTP servers);
 it structurally can't push an unsolicited message into a live stdio session.
 agentbus does that last mile and keeps its envelope A2A-shaped so a remote leg
 can be bolted on as an adapter. (Details in [SPEC.md §9](SPEC.md).)
+
+## Delivery modes
+
+The `claude` module offers two ways to receive — pick one, or run **both**:
+
+| | **channel** (push) | **hook** (pull) |
+|---|---|---|
+| arrives | in real time, mid-turn | at the next turn end / session start |
+| how | MCP `<channel>` push, woken by file-watch | a `Stop`/`SessionStart` hook drains the inbox |
+| launch | `claude --dangerously-load-development-channels server:agentbus` | plain `claude` (no flag) |
+| works in the agents panel? | ✗ (can't pass the channel flag) | ✓ |
+| process | a long-running MCP server | a short script Claude Code invokes |
+
+They're **not mutually exclusive**. Enable both and you get real-time delivery
+when the session loaded channels, with the hook as a guaranteed turn-boundary
+fallback — safe because both drain the *same* bus and a row is delivered by
+whichever flips its `deliveredAt` first (at-least-once; dedupe on `msg_id`).
+
+```bash
+bun run agentbus enable claude all    # channel + hook
+```
 
 ## Requirements
 
@@ -75,16 +100,18 @@ cd agentbus
 bash scripts/install.sh
 ```
 
-This installs deps and enables the `claude-mcp` module (registers it as a
-user-level MCP server, reachable from any directory).
+This installs deps and enables the `claude` module in **channel** mode (registers
+it as a user-level MCP server, reachable from any directory).
 
-Manage modules anytime:
+Manage modules and modes anytime:
 
 ```bash
-bun run agentbus list        # modules and whether each is enabled
-bun run agentbus enable claude-mcp
-bun run agentbus disable claude-mcp
-bun run agentbus doctor      # runtime, registration, live peers, mailboxes
+bun run agentbus list                 # modules, modes, and which are on
+bun run agentbus enable claude        # channel (default)
+bun run agentbus enable claude hook   # also turn on the hook mode (they stack)
+bun run agentbus enable claude all    # every mode
+bun run agentbus disable claude hook  # turn one mode off
+bun run agentbus doctor               # runtime, registration, live peers, mailboxes
 ```
 
 ## Uninstall
@@ -194,10 +221,12 @@ core/ports.ts              the standard: Envelope, Trigger, Delivery contracts
 core/paths.ts              where the bus lives (~/.agentbus)
 triggers/file-watch.ts     wake-file Trigger (default, event-driven)
 triggers/poll.ts           interval Trigger (fallback)
-adapters/claude-mcp/       the Claude Code module: MCP server + module.json
+adapters/claude/           the Claude Code module (module.json: channel + hook modes)
+  ├─ server.ts             channel mode: MCP server + channel push (long-running)
+  └─ drain.ts              hook mode: Stop/SessionStart inbox drain (invoked by CC)
 drizzle/                   generated, versioned SQL migrations
 cli.ts                     module manager (list/enable/disable/doctor/uninstall)
-scripts/install.sh         bootstrap: deps + enable claude-mcp
+scripts/install.sh         bootstrap: deps + enable claude
 scripts/demo.ts            self-driving demo (records the README cast)
 examples/two-sessions.md   end-to-end walkthrough
 test/bus.test.ts           integration tests over real stdio processes
