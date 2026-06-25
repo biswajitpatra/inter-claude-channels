@@ -1,0 +1,28 @@
+{
+  "name": "inter-claude-channels",
+  "version": "0.1.0",
+  "description": "A peer-to-peer channel that lets Claude Code sessions talk to each other.",
+  "license": "MIT",
+  "type": "module",
+  "bin": "./server.ts",
+  "scripts": {
+    "start": "bun install --no-summary && bun server.ts",
+    "test": "bun test",
+    "doctor": "bash scripts/doctor.sh",
+    "setup": "bash scripts/install.sh"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "channel",
+    "mcp",
+    "ipc",
+    "agents"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.10"
+  }
+}

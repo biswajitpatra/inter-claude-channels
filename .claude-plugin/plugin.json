@@ -1,0 +1,12 @@
+{
+  "name": "inter-claude",
+  "description": "Peer-to-peer channel for Claude Code — discover other running sessions on your machine and message them directly. Filesystem bus, no daemon, no network.",
+  "version": "0.1.0",
+  "keywords": [
+    "inter-claude",
+    "channel",
+    "mcp",
+    "ipc",
+    "agents"
+  ]
+}
