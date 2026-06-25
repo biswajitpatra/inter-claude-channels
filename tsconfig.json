@@ -10,5 +10,5 @@
     "noEmit": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["server.ts"]
+  "include": ["core/**/*.ts", "triggers/**/*.ts", "adapters/**/*.ts", "cli.ts", "scripts/**/*.ts", "test/**/*.ts"]
 }

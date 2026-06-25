@@ -13,13 +13,13 @@ bash scripts/install.sh
 Terminal A:
 
 ```bash
-INTER_CLAUDE_NAME=frontend claude --dangerously-load-development-channels server:inter-claude
+AGENTBUS_NAME=frontend claude --dangerously-load-development-channels server:agentbus
 ```
 
 Terminal B:
 
 ```bash
-INTER_CLAUDE_NAME=backend claude --dangerously-load-development-channels server:inter-claude
+AGENTBUS_NAME=backend claude --dangerously-load-development-channels server:agentbus
 ```
 
 Each prints a dim notice confirming the channel is registered. The first time,
@@ -37,7 +37,7 @@ In **frontend**, prompt:
 **backend** receives, without you touching its terminal:
 
 ```
-<channel source="inter-claude" from="frontend" msg_id="1719300000000-1" ts="2026-06-25T...">
+<channel source="agentbus" from="frontend" msg_id="1" ts="2026-06-25T...">
 What's the shape of the GET /users response?
 </channel>
 ```
@@ -55,10 +55,10 @@ Peers now address it as `api`. (This is the thing launch-time naming can't do.)
 ## Inspect / debug
 
 ```bash
-bash scripts/doctor.sh   # runtime, registration, live peers, pending/delivered counts
+bun run agentbus doctor   # runtime, registration, live peers, pending/delivered counts
 
 # the bus is just SQLite:
-DB=~/.claude/channels/inter-claude/bus.db
+DB=~/.agentbus/bus.db
 sqlite3 "$DB" "SELECT name, pid, last_seen FROM peers;"
 sqlite3 "$DB" "SELECT sender, recipient, body, delivered_at FROM messages ORDER BY id DESC LIMIT 10;"
 ```

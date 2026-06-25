@@ -1,8 +1,8 @@
 /**
  * Database schema (Drizzle ORM). Edit this file, then run `bun run db:generate`
- * to produce a new versioned migration under drizzle/. The server applies any
- * pending migrations automatically on startup, so updating the app later is
- * just: change the schema -> generate -> ship.
+ * to produce a new versioned migration under drizzle/. The bus applies any
+ * pending migrations automatically on open, so updating the app later is just:
+ * change the schema -> generate -> ship.
  */
 import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core'
 

@@ -1,34 +1,45 @@
 # Contributing
 
-Thanks for your interest in improving inter-claude-channels.
+Thanks for your interest in improving agentbus.
 
 ## Development
 
 ```bash
-bun install        # install deps
-bun test           # run the integration tests
-bun x tsc --noEmit # typecheck
-bun server.ts      # run the channel standalone (reads INTER_CLAUDE_NAME)
+bun install                       # install deps
+bun test                          # run the integration tests
+bun x tsc --noEmit                # typecheck
+bun adapters/claude-mcp/server.ts # run the claude adapter standalone (reads AGENTBUS_NAME)
 ```
 
 CI runs typecheck + tests on every push and PR; keep both green.
 
 ## Layout
 
-- `server.ts` — the channel: MCP tools + the poll-and-push delivery loop. Start here.
-- `db/schema.ts` — Drizzle table definitions (`peers`, `messages`).
-- `db/index.ts` — the bus: SQLite client, migrate-on-startup, and all queries.
+- `core/` — the runtime-agnostic bus and the port contracts. Start here.
+  - `core/ports.ts` — the standard: `Envelope`, `Trigger`, `Delivery`.
+  - `core/bus.ts` — SQLite client, migrate-on-startup, all queries.
+  - `core/schema.ts` — Drizzle tables (`peers`, `messages`).
+- `triggers/` — Trigger (PULL) implementations: `file-watch`, `poll`.
+- `adapters/<id>/` — a module: the runtime integration + a `module.json`.
+- `cli.ts` — the module manager (`list`/`enable`/`disable`/`doctor`/`uninstall`).
 - `drizzle/` — generated, versioned SQL migrations (committed).
-- `test/bus.test.ts` — spawns real server processes over stdio and asserts
+- `test/bus.test.ts` — spawns real adapter processes over stdio and asserts
   discovery, delivery, rename, offline queueing, and no-loss under concurrency.
-- `scripts/` — install / uninstall / doctor / demo helpers.
 
-See the **How it works** and **Data & migrations** sections of the
-[README](README.md) for the bus design.
+See [SPEC.md](SPEC.md) for the full standard and [README](README.md) for the
+bus design.
+
+## Adding a runtime adapter
+
+1. Create `adapters/<id>/` with an entry that opens the core bus and wires a
+   `Trigger` + a `Delivery` (see `adapters/claude-mcp/server.ts`).
+2. Add `adapters/<id>/module.json` (see [SPEC.md §7](SPEC.md)).
+3. If it needs a new install mechanism, add a `register.kind` handler in `cli.ts`.
+4. Keep the core untouched — adapters depend on the core, never the reverse.
 
 ## Changing the schema
 
-The schema is source-of-truth in `db/schema.ts`. After editing it:
+The schema is source-of-truth in `core/schema.ts`. After editing it:
 
 ```bash
 bun run db:generate   # writes a new drizzle/NNNN_*.sql migration — commit it

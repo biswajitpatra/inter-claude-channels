@@ -2,7 +2,7 @@ node_modules/
 *.log
 .DS_Store
 .env
-# local SQLite bus (lives under ~/.claude; never commit a stray copy)
+# local SQLite bus (lives under ~/.agentbus; never commit a stray copy)
 *.db
 *.db-wal
 *.db-shm

@@ -1,12 +1,13 @@
 {
-  "name": "inter-claude",
-  "description": "Peer-to-peer channel for Claude Code — discover other running sessions on your machine and message them directly. Filesystem bus, no daemon, no network.",
-  "version": "0.1.0",
+  "name": "agentbus",
+  "description": "Local message bus for AI agent sessions. Discover other running sessions on your machine and message them directly. SQLite bus, pluggable triggers, MCP channel delivery — no daemon, no network.",
+  "version": "0.2.0",
   "keywords": [
-    "inter-claude",
+    "agentbus",
     "channel",
     "mcp",
     "ipc",
-    "agents"
+    "agents",
+    "message-bus"
   ]
 }

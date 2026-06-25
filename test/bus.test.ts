@@ -4,7 +4,7 @@
  * concurrent senders never lose or duplicate a message.
  */
 import { test, expect } from 'bun:test'
-import { openBus } from '../db'
+import { openBus } from '../core/bus'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { mkdtempSync } from 'fs'
@@ -16,14 +16,14 @@ const text = (r: any) => JSON.stringify(r)
 function session(name: string, home: string) {
   const transport = new StdioClientTransport({
     command: 'bun',
-    args: ['server.ts'],
-    env: { ...process.env, INTER_CLAUDE_NAME: name, INTER_CLAUDE_HOME: home },
+    args: ['adapters/claude-mcp/server.ts'],
+    env: { ...process.env, AGENTBUS_NAME: name, AGENTBUS_HOME: home },
   })
   return { client: new Client({ name: `test-${name}`, version: '0' }), transport }
 }
 
 test('discovery + delivery + rename', async () => {
-  const home = mkdtempSync(join(tmpdir(), 'inter-claude-'))
+  const home = mkdtempSync(join(tmpdir(), 'agentbus-'))
   const received: unknown[] = []
 
   const alice = session('alice', home)
@@ -55,7 +55,7 @@ test('discovery + delivery + rename', async () => {
 }, 20_000)
 
 test('offline queue drains on startup', async () => {
-  const home = mkdtempSync(join(tmpdir(), 'inter-claude-'))
+  const home = mkdtempSync(join(tmpdir(), 'agentbus-'))
   const received: unknown[] = []
 
   // queue a message for carol before carol exists (reuses the real bus + migrations)
@@ -73,7 +73,7 @@ test('offline queue drains on startup', async () => {
 }, 20_000)
 
 test('concurrent senders never lose or duplicate', async () => {
-  const home = mkdtempSync(join(tmpdir(), 'inter-claude-'))
+  const home = mkdtempSync(join(tmpdir(), 'agentbus-'))
   const got: string[] = []
 
   const rcv = session('rcv', home)

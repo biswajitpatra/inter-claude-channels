@@ -2,12 +2,16 @@
  * The bus: all shared state (peers + messages) in one SQLite database, accessed
  * through Drizzle. Pending migrations are applied on open, so a freshly shipped
  * schema change upgrades the store automatically.
+ *
+ * This module is runtime-agnostic: it knows nothing about MCP, channels, or how
+ * a message reaches a session (that is the Delivery port) or how a recipient is
+ * woken (that is the Trigger port). It is purely presence + a durable mailbox.
  */
 import { Database } from 'bun:sqlite'
 import { drizzle } from 'drizzle-orm/bun-sqlite'
 import { migrate } from 'drizzle-orm/bun-sqlite/migrator'
 import { and, asc, eq, gte, isNotNull, isNull, lt } from 'drizzle-orm'
-import { mkdirSync, writeFileSync, watch, openSync, closeSync, rmSync } from 'fs'
+import { mkdirSync, openSync, closeSync, rmSync } from 'fs'
 import { dirname, join } from 'path'
 import { messages, peers, type Message, type Peer } from './schema'
 
@@ -48,12 +52,6 @@ export function openBus(dbPath: string) {
     migrate(db, { migrationsFolder: join(import.meta.dir, '..', 'drizzle') })
   })
 
-  // wake files are zero-byte triggers (not state): touching wake/<peer> nudges
-  // that peer to drain immediately. The DB remains the source of truth.
-  const wakeDir = join(dirname(dbPath), 'wake')
-  mkdirSync(wakeDir, { recursive: true })
-  const wakePath = (n: string) => join(wakeDir, n)
-
   const now = () => Date.now()
 
   return {
@@ -81,7 +79,7 @@ export function openBus(dbPath: string) {
         .where(and(eq(peers.name, name), gte(peers.lastSeen, now() - staleMs))).get() != null
     },
 
-    // --- messages ---
+    // --- messages (the durable mailbox) ---
     enqueue(sender: string, recipient: string, body: string): number {
       const [row] = db.insert(messages)
         .values({ sender, recipient, body, createdAt: now() })
@@ -103,17 +101,6 @@ export function openBus(dbPath: string) {
     prune(ttlMs: number) {
       db.delete(messages)
         .where(and(isNotNull(messages.deliveredAt), lt(messages.deliveredAt, now() - ttlMs))).run()
-    },
-
-    // --- wake (push trigger) ---
-    // touch the recipient's wake file so its fs.watch fires and it drains now
-    wake(recipient: string) {
-      try { writeFileSync(wakePath(recipient), '') } catch {}
-    },
-    // watch our own wake file; onWake fires (near-instant) when a peer touches it
-    watchInbox(name: string, onWake: () => void) {
-      try { writeFileSync(wakePath(name), '') } catch {} // ensure it exists to watch
-      return watch(wakeDir, (_event, file) => { if (file === null || file === name) onWake() })
     },
 
     close() {
