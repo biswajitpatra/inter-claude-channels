@@ -37,10 +37,12 @@ const bus = openBus(DB_PATH)
 // (the hook is itself an opt-in: you enabled this delivery), naming it from
 // AGENTBUS_NAME, the dispatched --agent type, or a session-derived fallback.
 const hasName = bus.displayName(myId) !== myId
+// AGENTBUS_NAME (when set) is used verbatim; an auto-name gets a session suffix
+// so multiple dispatched agents of the same type don't collide on one name (a
+// background session can't rename itself — no id source for set_name/CLI).
 const autoName =
   sanitizeName(process.env.AGENTBUS_NAME ?? '') ||
-  sanitizeName(input.agent_type ?? '') ||
-  `agent-${token.slice(0, 6)}`
+  `${sanitizeName(input.agent_type ?? '') || 'agent'}-${token.slice(0, 6)}`
 bus.registerIdentity(myId, input.session_id ?? null, process.pid)
 if (!hasName) bus.setName(autoName, myId)
 const name = bus.displayName(myId)
